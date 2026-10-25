@@ -1,0 +1,47 @@
+@page "/activity"
+@inherits MementoMori.BlazorShared.Models.AccountComponent
+@using MementoMori.BlazorShared.Components
+@using DynamicData.Binding
+@implements IDisposable
+
+<PageTitle>Activity</PageTitle>
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" lg="8">
+        <MudCard>
+            <MudCardHeader><CardHeaderContent><MudText>Everything the bot did</MudText></CardHeaderContent></MudCardHeader>
+            <MudCardContent>
+                <ActivityFeed Events="@Funcs.History.Events" Limit="1000" ShowFilter="true"/>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" lg="4">
+        <MudCard>
+            <MudCardHeader><CardHeaderContent><MudText>Run snapshots</MudText></CardHeaderContent></MudCardHeader>
+            <MudCardContent>
+                <MudSimpleTable Dense="true" Hover="true">
+                    <thead><tr><th>Time</th><th>Quest</th><th>Link</th><th>Rank</th></tr></thead>
+                    <tbody>
+                    @foreach (var s in Funcs.History.Snapshots.AsEnumerable().Reverse().Take(200))
+                    {
+                        <tr><td>@s.Time.ToLocalTime().ToString("MM/dd HH:mm")</td><td>@s.QuestName</td><td>@s.LinkLevel</td><td>@s.PlayerRank</td></tr>
+                    }
+                    </tbody>
+                </MudSimpleTable>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    IDisposable? _sub;
+
+    protected override Task AccountChanged()
+    {
+        _sub?.Dispose();
+        _sub = Funcs.WhenAnyPropertyChanged().Subscribe(_ => InvokeAsync(StateHasChanged));
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _sub?.Dispose();
+}

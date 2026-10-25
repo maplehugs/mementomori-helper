@@ -4,7 +4,7 @@
 @inject IHttpClientFactory HttpClientFactory
 
 @inherits MementoMori.BlazorShared.Models.AccountComponent
-@page "/"
+@page "/tools"
 @using MementoMori.Ortega.Share
 @using MementoMori.Ortega.Share.Data
 @using MementoMori.Ortega.Share.Enums
@@ -50,60 +50,6 @@
 {
     <MudItem md="12">
         <MudAlert Severity="Severity.Warning">@alertMessage</MudAlert>
-    </MudItem>
-}
-@if (AccountManager.CurrentUserId > 0 && Funcs.LoginOk)
-{
-    var sync = Funcs.UserSyncData;
-    var link = sync?.UserLevelLinkDtoInfo;
-    var quest = QuestTable.GetById(sync?.UserBattleBossDtoInfo?.BossClearMaxQuestId ?? 0);
-    var team = sync?.GetDeckUserCharacterDtoInfos(DeckUseContentType.Auto) ?? new();
-    <MudItem xs="12">
-        <MudPaper Class="mm-hero" Elevation="0">
-            <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="4">
-                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="6">
-                    <div class="mm-stat">
-                        <div class="mm-stat-label">Main quest</div>
-                        <div class="mm-stat-value">@(quest?.Memo ?? "-")</div>
-                    </div>
-                    <div class="mm-stat">
-                        <div class="mm-stat-label">Level Link</div>
-                        <div class="mm-stat-value">@link?.PartyLevel@(link?.PartySubLevel > 0 ? $".{link.PartySubLevel}" : "")</div>
-                    </div>
-                    @foreach (var t in sync?.UserTowerBattleDtoInfos ?? new())
-                    {
-                        <div class="mm-stat">
-                            <div class="mm-stat-label">@Tr(t.TowerType)</div>
-                            <div class="mm-stat-value">@t.MaxTowerBattleId</div>
-                        </div>
-                    }
-                </MudStack>
-                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
-                    @if (Funcs.IsQuickActionExecuting)
-                    {
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary"/>
-                        <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Rounded.StopCircle" OnClick="@Funcs.CancelQuickAction">Stop</MudButton>
-                    }
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.RocketLaunch" Disabled="@Funcs.IsQuickActionExecuting" OnClick="@Funcs.AutoProgress">Auto Progress</MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Rounded.TrendingUp" Disabled="@Funcs.IsQuickActionExecuting" OnClick="@Funcs.AutoGrow">Grow</MudButton>
-                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Rounded.Link" Disabled="@Funcs.IsQuickActionExecuting" OnClick="@Funcs.AutoFillLevelLink">Fill Link</MudButton>
-                </MudStack>
-            </MudStack>
-            @if (team.Count > 0)
-            {
-                <MudDivider Class="my-4"/>
-                <div class="mm-stat-label mb-2">Main team</div>
-                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
-                    @foreach (var c in team)
-                    {
-                        var lv = sync.IsLevelLinkMember(c.Guid) ? sync.GetLevelLinkLevel(c.CharacterId) : c.Level;
-                        <MudChip T="string" Variant="Variant.Text" Color="@(sync.IsLevelLinkMember(c.Guid) ? Color.Tertiary : Color.Default)" Icon="@(sync.IsLevelLinkMember(c.Guid) ? Icons.Material.Rounded.Link : null)">
-                            @CharacterTable.GetById(c.CharacterId).GetCombinedName() · Lv @lv
-                        </MudChip>
-                    }
-                </MudStack>
-            }
-        </MudPaper>
     </MudItem>
 }
 @if (AccountManager.CurrentUserId > 0)

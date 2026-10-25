@@ -13,6 +13,9 @@
     </MudCardHeader>
     <MudCardContent>
         <MudSwitch Label="@ResourceStrings.DisableAllJobs" @bind-Value="AutoJob__DisableAll" Color="Color.Primary"></MudSwitch>
+        <MudSwitch Label="Auto build best team (sets quest team)" @bind-Value="AutoJob__AutoBuildTeam" Color="Color.Primary"></MudSwitch>
+        <MudSwitch Label="Auto pull gacha (tickets + S/SS pickups, keeps reserve)" @bind-Value="AutoJob__AutoPullGacha" Color="Color.Primary"></MudSwitch>
+        <MudSwitch Label="Rank up using low-tier fodder of same element" @bind-Value="AutoJob__AutoRankUpWithFodder" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="Auto main quest (stop after 3 losses)" @bind-Value="AutoJob__AutoProgressQuest" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="Auto towers" @bind-Value="AutoJob__AutoProgressTower" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="Auto level up" @bind-Value="AutoJob__AutoLevelUpCharacter" Color="Color.Primary"></MudSwitch>
@@ -34,6 +37,24 @@
 </MudCard>
 
 @code {
+    public bool AutoJob__AutoBuildTeam
+    {
+        get => WritableGameConfig.Value.AutoJob.AutoBuildTeam;
+        set => WritableGameConfig.Update(x => x.AutoJob.AutoBuildTeam = value);
+    }
+
+    public bool AutoJob__AutoPullGacha
+    {
+        get => WritableGameConfig.Value.AutoJob.AutoPullGacha;
+        set => WritableGameConfig.Update(x => x.AutoJob.AutoPullGacha = value);
+    }
+
+    public bool AutoJob__AutoRankUpWithFodder
+    {
+        get => WritableGameConfig.Value.AutoJob.AutoRankUpWithFodder;
+        set => WritableGameConfig.Update(x => x.AutoJob.AutoRankUpWithFodder = value);
+    }
+
     public bool AutoJob__AutoProgressQuest
     {
         get => WritableGameConfig.Value.AutoJob.AutoProgressQuest;

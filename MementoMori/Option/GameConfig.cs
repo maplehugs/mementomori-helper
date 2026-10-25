@@ -133,6 +133,11 @@ public class GameConfig
         public bool AutoReinforceTeamEquipment { get; set; }
         public bool AutoProgressQuest { get; set; }
         public bool AutoProgressTower { get; set; }
+        public bool AutoBuildTeam { get; set; }
+        public bool AutoPullGacha { get; set; }
+        public long GachaDiamondReserve { get; set; } = 3000;
+        public int GachaMinPickupTier { get; set; } = 4; // 4 = S, 5 = SS
+        public bool AutoRankUpWithFodder { get; set; } = true;
         public bool AutoOpenGuildRaid { get; set; }
         public bool AutoLocalRaid { get; set; }
         public bool AutoDeployGuildDefense { get; set; }

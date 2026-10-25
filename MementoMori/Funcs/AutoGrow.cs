@@ -13,37 +13,50 @@ public partial class MementoMoriFuncs
 {
     public async Task AutoGrow()
     {
-        if (GameConfig.AutoJob.AutoEquipBest) await AutoEquipBest();
-        if (GameConfig.AutoJob.AutoLevelUpCharacter) await AutoLevelUpCharacter();
-        if (GameConfig.AutoJob.AutoEquipBest) await AutoEquipBest(); // 升级后可能能穿更高级的
-        if (GameConfig.AutoJob.AutoReinforceTeamEquipment) await AutoReinforceTeamEquipment();
-        var link = UserSyncData.UserLevelLinkDtoInfo;
-        AddLog($"[Grow] Link Lv{link?.PartyLevel}.{link?.PartySubLevel} | " +
-               string.Join(", ", GetMainTeam().Select(c => $"{CharacterTable.GetById(c.CharacterId).GetCombinedName()} Lv{GetEffectiveLevel(c)}")));
+        if (GameConfig.AutoJob.AutoEquipBest) await RunTask("Equipping best gear", AutoEquipBest);
+        if (GameConfig.AutoJob.AutoLevelUpCharacter) await RunTask("Leveling up", AutoLevelUpCharacter);
+        if (GameConfig.AutoJob.AutoEquipBest) await RunTask("Equipping best gear", AutoEquipBest); // 升级后可能能穿更高级的
+        if (GameConfig.AutoJob.AutoReinforceTeamEquipment) await RunTask("Reinforcing gear", AutoReinforceTeamEquipment);
     }
 
     private bool CanAfford(IEnumerable<UserItem> items) =>
         items.All(i => i.ItemCount <= 0 || UserSyncData.GetUserItemCount(i.ItemType, i.ItemId) >= i.ItemCount);
 
-    // 主队角色 (Auto deck), 没有就用等级最高的5个
-    private List<UserCharacterDtoInfo> GetMainTeam()
+    // 主队角色 (Boss deck → Auto deck), 没有就用等级最高的5个
+    public List<UserCharacterDtoInfo> GetMainTeam()
     {
-        var team = UserSyncData.GetDeckUserCharacterDtoInfos(DeckUseContentType.Auto);
+        if (UserSyncData?.UserCharacterDtoInfos == null) return new();
+        // battle/boss 只传 QuestId, 服务器用的是 Boss 队
+        var team = UserSyncData.GetDeckUserCharacterDtoInfos(DeckUseContentType.Boss);
+        if (team.Count == 0) team = UserSyncData.GetDeckUserCharacterDtoInfos(DeckUseContentType.Auto);
         return team.Count > 0 ? team : UserSyncData.UserCharacterDtoInfos.OrderByDescending(d => d.Level).Take(5).ToList();
     }
 
-    private long GetEffectiveLevel(UserCharacterDtoInfo c) =>
+    public long GetEffectiveLevel(UserCharacterDtoInfo c) =>
         UserSyncData.IsLevelLinkMember(c.Guid) ? UserSyncData.GetLevelLinkLevel(c.CharacterId) : c.Level;
+
+    // 只要名字, 不带称号 ("Lunalynn" 而不是 "LunalynnThe Witch of ...")
+    public static string CharName(long characterId)
+    {
+        var mb = CharacterTable.GetById(characterId);
+        return mb == null ? characterId.ToString() : TextResourceTable.Get(mb.NameKey);
+    }
+
+    public static string EquipName(long equipmentId)
+    {
+        var mb = EquipmentTable.GetById(equipmentId);
+        return mb == null ? equipmentId.ToString() : $"{TextResourceTable.Get(mb.NameKey)} ({mb.RarityFlags} Lv{mb.EquipmentLv})";
+    }
 
     public async Task AutoLevelUpCharacter()
     {
         await ExecuteQuickAction(async (log, token) =>
         {
-            var count = 0;
             var link = UserSyncData.UserLevelLinkDtoInfo;
             if (link is {IsPartyMode: true})
             {
                 // 组队模式: 每个 LevelLinkMB 是一步, 同等级内 addExp, 跨等级 levelUp
+                var before = $"{link.PartyLevel}.{link.PartySubLevel}";
                 var table = LevelLinkTable.GetArray().OrderBy(d => d.Id).ToList();
                 while (!token.IsCancellationRequested)
                 {
@@ -57,15 +70,18 @@ public partial class MementoMoriFuncs
                         await GetResponse<LevelLinkApi.AddExpRequest, LevelLinkApi.AddExpResponse>(new LevelLinkApi.AddExpRequest());
                     else
                         await GetResponse<LevelLinkApi.LevelUpRequest, LevelLinkApi.LevelUpResponse>(new LevelLinkApi.LevelUpRequest());
-                    count++;
                     await Task.Delay(GameConfig.AutoRequestDelay, token);
                 }
 
-                log($"Level Link Lv{UserSyncData.UserLevelLinkDtoInfo.PartyLevel}.{UserSyncData.UserLevelLinkDtoInfo.PartySubLevel} (+{count})");
+                link = UserSyncData.UserLevelLinkDtoInfo;
+                var after = $"{link.PartyLevel}.{link.PartySubLevel}";
+                if (after != before) Track(GrowthKind.LevelLink, $"Party level {before} → {after}");
                 return;
             }
 
             // 普通模式: 只升不在等级链接里的前5名, 每次升最低的那个 (等级链接等级 = 前5名最低等级)
+            var start = UserSyncData.UserCharacterDtoInfos.ToDictionary(d => d.Guid, d => d.Level);
+            var linkBefore = link?.PartyLevel ?? 0;
             var skip = new HashSet<string>();
             while (!token.IsCancellationRequested)
             {
@@ -77,24 +93,28 @@ public partial class MementoMoriFuncs
                     .MinBy(d => d.Level);
                 if (c == null) break;
                 var cost = CharacterLevelTable.GetArray().FirstOrDefault(d => d.Level == c.Level + 1);
-                if (cost == null) break;
-                if (!CanAfford(cost.RequiredItemList)) break;
+                if (cost == null || !CanAfford(cost.RequiredItemList)) break;
                 try
                 {
                     await GetResponse<CharLevelUp.LevelUpRequest, CharLevelUp.LevelUpResponse>(new CharLevelUp.LevelUpRequest {UserCharacterGuid = c.Guid});
-                    count++;
                 }
                 catch (Exception e)
                 {
                     // ponytail: 稀有度上限没精确算, 报错就跳过这个角色
-                    log($"LevelUp {CharacterTable.GetById(c.CharacterId).GetCombinedName()}: {e.Message}");
+                    log($"LevelUp {CharName(c.CharacterId)}: {e.Message}");
                     skip.Add(c.Guid);
                 }
 
                 await Task.Delay(GameConfig.AutoRequestDelay, token);
             }
 
-            log($"{TextResourceTable.Get("[CharacterLevelUpLabel]")} +{count} {ResourceStrings.Finished}");
+            var changed = UserSyncData.UserCharacterDtoInfos
+                .Where(d => start.TryGetValue(d.Guid, out var lv) && d.Level > lv)
+                .Select(d => $"{CharName(d.CharacterId)} {start[d.Guid]}→{d.Level}").ToList();
+            if (changed.Count > 0) Track(GrowthKind.Level, string.Join(", ", changed));
+            var linkAfter = UserSyncData.UserLevelLinkDtoInfo?.PartyLevel ?? 0;
+            if (linkAfter > linkBefore) Track(GrowthKind.LevelLink, $"Level Link {linkBefore} → {linkAfter}");
+            if (changed.Count == 0) log("Level up: not enough gold/potions");
         });
     }
 
@@ -103,13 +123,13 @@ public partial class MementoMoriFuncs
     {
         await ExecuteQuickAction(async (log, token) =>
         {
-            var count = 0;
             foreach (var c in GetMainTeam())
             {
                 var job = CharacterTable.GetById(c.CharacterId).JobFlags;
                 var level = GetEffectiveLevel(c);
                 var equipped = UserSyncData.GetUserEquipmentDtoInfoSlotTypeDictionaryByCharacterGuid(c.Guid);
                 var changes = new List<EquipmentChangeInfo>();
+                var descriptions = new List<string>();
                 foreach (var (slot, current) in equipped)
                 {
                     var currentPower = current == null ? -1 : EquipmentTable.GetById(current.EquipmentId).PerformancePoint;
@@ -138,6 +158,7 @@ public partial class MementoMoriFuncs
                         // null = 全部继承 (选择性继承要解锁后才能用, 否则 232061)
                         EquipmentInheritanceTypeList = null
                     });
+                    descriptions.Add(current == null ? $"{slot}: {EquipName(mb.Id)}" : $"{slot}: {EquipName(current.EquipmentId)} → {EquipName(mb.Id)}");
                 }
 
                 if (changes.Count == 0) continue;
@@ -147,18 +168,15 @@ public partial class MementoMoriFuncs
                     {
                         UserCharacterGuid = c.Guid, EquipmentChangeInfos = changes
                     });
-                    count += changes.Count;
-                    log($"{CharacterTable.GetById(c.CharacterId).GetCombinedName()}: {string.Join(", ", changes.Select(x => EquipmentTable.GetById(x.EquipmentId).Memo))}");
+                    Track(GrowthKind.Equip, $"{CharName(c.CharacterId)} — {string.Join("; ", descriptions)}");
                 }
                 catch (Exception e)
                 {
-                    log($"Equip {CharacterTable.GetById(c.CharacterId).GetCombinedName()}: {e.Message}");
+                    log($"Equip {CharName(c.CharacterId)}: {e.Message}");
                 }
 
                 await Task.Delay(GameConfig.AutoRequestDelay, token);
             }
-
-            log($"AutoEquip +{count} {ResourceStrings.Finished}");
         });
     }
 
@@ -167,12 +185,12 @@ public partial class MementoMoriFuncs
     {
         await ExecuteQuickAction(async (log, token) =>
         {
-            var count = 0;
-            var guids = GetMainTeam().Select(c => c.Guid).ToHashSet();
+            var team = GetMainTeam().ToDictionary(c => c.Guid, c => c.CharacterId);
+            var start = UserSyncData.UserEquipmentDtoInfos.Where(d => team.ContainsKey(d.CharacterGuid ?? "")).ToDictionary(d => d.Guid, d => d.ReinforcementLv);
             while (!token.IsCancellationRequested)
             {
                 var e = UserSyncData.UserEquipmentDtoInfos
-                    .Where(d => guids.Contains(d.CharacterGuid) && EquipmentTable.GetById(d.EquipmentId).EquipmentLv > d.ReinforcementLv)
+                    .Where(d => team.ContainsKey(d.CharacterGuid ?? "") && EquipmentTable.GetById(d.EquipmentId).EquipmentLv > d.ReinforcementLv)
                     .MinBy(d => d.ReinforcementLv);
                 if (e == null) break;
                 var mat = EquipmentReinforcementMaterialTable.GetArray().FirstOrDefault(d => d.ReinforcementLevel == e.ReinforcementLv + 1);
@@ -180,11 +198,15 @@ public partial class MementoMoriFuncs
                 var cost = EquipmentTable.GetById(e.EquipmentId).SlotType == EquipmentSlotType.Weapon ? mat.WeaponRequiredItemList : mat.OthersRequiredItemList;
                 if (!CanAfford(cost)) break;
                 await GetResponse<ReinforcementRequest, ReinforcementResponse>(new ReinforcementRequest {EquipmentGuid = e.Guid, NumberOfTimes = 1});
-                count++;
                 await Task.Delay(GameConfig.AutoRequestDelay, token);
             }
 
-            log($"{TextResourceTable.Get("[CommonReinforceLabel]")} +{count} {ResourceStrings.Finished}");
+            var perChar = UserSyncData.UserEquipmentDtoInfos
+                .Where(d => team.ContainsKey(d.CharacterGuid ?? "") && start.TryGetValue(d.Guid, out var lv) && d.ReinforcementLv > lv)
+                .GroupBy(d => d.CharacterGuid)
+                .Select(g => $"{CharName(team[g.Key])}: " + string.Join(", ", g.Select(d => $"{EquipmentTable.GetById(d.EquipmentId).SlotType} +{start[d.Guid]}→+{d.ReinforcementLv}")))
+                .ToList();
+            if (perChar.Count > 0) Track(GrowthKind.Reinforce, string.Join(" | ", perChar));
         });
     }
 }

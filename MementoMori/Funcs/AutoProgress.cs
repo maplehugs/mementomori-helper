@@ -11,18 +11,20 @@ public partial class MementoMoriFuncs
     private const int ProgressMaxLosses = 3; // 连输3次就停, 等下次成长后再打
     private const int ProgressMaxFights = 60; // ponytail: 每轮上限, 防止再被 403
 
-    public string LastProgressSummary { get; private set; } = "";
-
     // 一键: 成长 -> 主线 -> 塔 -> 再成长
     public async Task AutoProgress()
     {
-        await AutoFillLevelLink();
+        if (GameConfig.AutoJob.AutoPullGacha) await RunTask("Pulling gacha", AutoPullGacha);
+        if (GameConfig.AutoJob.AutoRankUpCharacter) await RunTask("Ranking up characters", AutoRankUpSmart);
+        if (GameConfig.AutoJob.AutoBuildTeam) await RunTask("Building best team", AutoBuildTeam);
+        await RunTask("Filling Level Link", AutoFillLevelLink);
         await AutoGrow();
-        if (GameConfig.AutoJob.AutoProgressQuest) await AutoProgressQuest();
+        if (GameConfig.AutoJob.AutoProgressQuest) await RunTask("Climbing main quest", AutoProgressQuest);
         if (GameConfig.AutoJob.AutoProgressTower)
             foreach (var t in GetAvailableTower())
-                await AutoProgressTower(t);
+                await RunTask($"Climbing {TextResourceTable.Get(t)}", () => AutoProgressTower(t));
         await AutoGrow();
+        TakeSnapshot();
     }
 
     // 把空的等级链接格子填满 (主队优先, 然后稀有度高的), 不动前5名基础角色
@@ -51,7 +53,7 @@ public partial class MementoMoriFuncs
                 try
                 {
                     await GetResponse<LevelLinkApi.SetMemberRequest, LevelLinkApi.SetMemberResponse>(new LevelLinkApi.SetMemberRequest {LevelLinkCellNo = cell, UserCharacterGuid = c.Guid});
-                    log($"Level Link +{CharacterTable.GetById(c.CharacterId).GetCombinedName()} (slot {cell})");
+                    Track(GrowthKind.LevelLink, $"{CharName(c.CharacterId)} joined Level Link (slot {cell})");
                 }
                 catch (Exception e)
                 {
@@ -67,7 +69,8 @@ public partial class MementoMoriFuncs
     {
         await ExecuteQuickAction(async (log, token) =>
         {
-            int fights = 0, losses = 0;
+            int fights = 0, losses = 0, wins = 0;
+            var startQuest = UserSyncData.UserBattleBossDtoInfo.BossClearMaxQuestId;
             await GetResponse<MapInfoRequest, MapInfoResponse>(new MapInfoRequest {IsUpdateOtherPlayerInfo = true});
             while (!token.IsCancellationRequested && fights < ProgressMaxFights && losses < ProgressMaxLosses)
             {
@@ -83,6 +86,7 @@ public partial class MementoMoriFuncs
                     if (win)
                     {
                         losses = 0;
+                        wins++;
                         await GetResponse<MapInfoRequest, MapInfoResponse>(new MapInfoRequest {IsUpdateOtherPlayerInfo = true});
                         try { await GetResponse<NextQuestRequest, NextQuestResponse>(new NextQuestRequest()); }
                         catch (Exception) { /* 没有下一关可移动时会报错 */ }
@@ -98,8 +102,10 @@ public partial class MementoMoriFuncs
                 await Task.Delay(Math.Max(GameConfig.AutoRequestDelay, 1500), token);
             }
 
-            LastProgressSummary = $"Quest {QuestTable.GetById(UserSyncData.UserBattleBossDtoInfo.BossClearMaxQuestId)?.Memo}";
-            log($"[Progress] {LastProgressSummary} ({fights} fights)");
+            var endQuest = UserSyncData.UserBattleBossDtoInfo.BossClearMaxQuestId;
+            string Q(long id) => QuestTable.GetById(id)?.Memo ?? id.ToString();
+            if (endQuest > startQuest) Track(GrowthKind.Quest, $"Main quest {Q(startQuest)} → {Q(endQuest)} ({wins} wins, {fights - wins} losses)");
+            else if (losses >= ProgressMaxLosses) Track(GrowthKind.Info, $"Stuck at quest {Q(endQuest + 1)} — lost {losses}x, will retry after next growth");
         });
     }
 
@@ -108,6 +114,7 @@ public partial class MementoMoriFuncs
         await ExecuteQuickAction(async (log, token) =>
         {
             int fights = 0, losses = 0;
+            var startFloor = UserSyncData.UserTowerBattleDtoInfos?.FirstOrDefault(d => d.TowerType == type)?.MaxTowerBattleId ?? 0;
             while (!token.IsCancellationRequested && fights < ProgressMaxFights && losses < ProgressMaxLosses)
             {
                 var tower = UserSyncData.UserTowerBattleDtoInfos?.FirstOrDefault(d => d.TowerType == type);
@@ -130,6 +137,9 @@ public partial class MementoMoriFuncs
 
                 await Task.Delay(Math.Max(GameConfig.AutoRequestDelay, 1500), token);
             }
+
+            var endFloor = UserSyncData.UserTowerBattleDtoInfos?.FirstOrDefault(d => d.TowerType == type)?.MaxTowerBattleId ?? 0;
+            if (endFloor > startFloor) Track(GrowthKind.Tower, $"{TextResourceTable.Get(type)} floor {startFloor} → {endFloor}");
         });
     }
 }

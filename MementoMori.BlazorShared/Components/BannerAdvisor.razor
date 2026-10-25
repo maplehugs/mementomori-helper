@@ -1,0 +1,90 @@
+@inherits MementoMori.BlazorShared.Models.AccountComponent
+@using MementoMori.Funcs
+@using MementoMori.Option
+@inject IWritableOptions<GameConfig> WritableGameConfig
+
+<MudCard Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText>Banner advisor</MudText>
+            <MudText Typo="Typo.caption" Class="mm-muted">
+                Auto pull spends tickets freely and diamonds only on @(WritableGameConfig.Value.AutoJob.GachaMinPickupTier >= 5 ? "SS" : "S/SS")-tier pickups, keeping @WritableGameConfig.Value.AutoJob.GachaDiamondReserve.ToString("N0") diamonds in reserve.
+            </MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudSwitch T="bool" Value="WritableGameConfig.Value.AutoJob.AutoPullGacha" ValueChanged="v => WritableGameConfig.Update(x => x.AutoJob.AutoPullGacha = v)" Color="Color.Primary" Label="Auto pull"/>
+                <MudNumericField T="long" Value="WritableGameConfig.Value.AutoJob.GachaDiamondReserve" ValueChanged="v => WritableGameConfig.Update(x => x.AutoJob.GachaDiamondReserve = v)"
+                                 Label="Diamond reserve" Variant="Variant.Outlined" Margin="Margin.Dense" Step="500" Min="0" Style="max-width:150px"/>
+                <MudIconButton Icon="@Icons.Material.Rounded.Refresh" OnClick="Refresh" Disabled="_busy" aria-label="Refresh banners"/>
+            </MudStack>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (_busy && Funcs.LastBannerAdvice.Count == 0)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary"/>
+        }
+        <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+            <thead><tr><th>Banner</th><th>Pickup</th><th>Verdict</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var a in Funcs.LastBannerAdvice)
+            {
+                <tr>
+                    <td><b>@a.Name</b></td>
+                    <td>
+                        @if (a.PickupCharacterId > 0)
+                        {
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <TierBadge Tier="@a.PickupTier"/> <span>@MementoMoriFuncs.CharName(a.PickupCharacterId)</span>
+                            </MudStack>
+                        }
+                        else { <span class="mm-muted">—</span> }
+                    </td>
+                    <td><span style="color:@(a.Worth || a.TicketButton != null ? "var(--mud-palette-success)" : "var(--mud-palette-text-secondary)")">@a.Verdict</span></td>
+                    <td style="text-align:right; white-space:nowrap">
+                        @if (a.TicketButton != null)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="_busy" OnClick="() => Draw(a.TicketButton.GachaButtonId, a.Name)">Ticket ×@a.TicketButton.LotteryCount</MudButton>
+                        }
+                        @if (a.DiamondButton != null)
+                        {
+                            <MudButton Size="Size.Small" Variant="@(a.Worth ? Variant.Filled : Variant.Text)" Color="@(a.Worth ? Color.Primary : Color.Default)" Disabled="_busy"
+                                       OnClick="() => Draw(a.DiamondButton.GachaButtonId, a.Name)">
+                                <MudIcon Icon="@Icons.Material.Rounded.Diamond" Size="Size.Small" Class="mr-1"/>@a.DiamondButton.ConsumeUserItem.ItemCount.ToString("N0") ×@a.DiamondButton.LotteryCount
+                            </MudButton>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </MudSimpleTable>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    bool _busy;
+
+    protected override async Task AccountChanged()
+    {
+        if (Funcs.LoginOk && Funcs.LastBannerAdvice.Count == 0) await Refresh();
+    }
+
+    async Task Refresh()
+    {
+        _busy = true;
+        try { await Funcs.EvaluateBanners(); }
+        finally { _busy = false; }
+    }
+
+    async Task Draw(long buttonId, string name)
+    {
+        _busy = true;
+        try
+        {
+            await Funcs.DrawBanner(buttonId, name);
+            await Funcs.EvaluateBanners();
+        }
+        finally { _busy = false; }
+    }
+}

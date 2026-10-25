@@ -1,27 +1,19 @@
-﻿@using static MementoMori.Ortega.Share.Masters
+@using static MementoMori.Ortega.Share.Masters
 
 <MudNavMenu Class="mm-nav" Color="Color.Primary" Rounded="true" Margin="Margin.Dense">
-    <MudNavLink Icon="@Icons.Material.Rounded.SpaceDashboard" Href="" Match="NavLinkMatch.All">@TextResourceTable.Get("[CommonFooterHomeButtonLabel]")</MudNavLink>
-    <MudNavLink Icon="@Icons.Material.Rounded.Groups" Href="Character" Match="NavLinkMatch.Prefix">@TextResourceTable.Get("[CommonFooterCharacterButtonLabel]")</MudNavLink>
+    <div class="mm-nav-section">Autopilot</div>
+    <MudNavLink Icon="@Icons.Material.Rounded.SpaceDashboard" Href="" Match="NavLinkMatch.All">Dashboard</MudNavLink>
+    <MudNavLink Icon="@Icons.Material.Rounded.Timeline" Href="activity" Match="NavLinkMatch.Prefix">Activity</MudNavLink>
+    <MudNavLink Icon="@Icons.Material.Rounded.Groups" Href="team" Match="NavLinkMatch.Prefix">Team &amp; tiers</MudNavLink>
+    <MudNavLink Icon="@Icons.Material.Rounded.AutoAwesome" Href="gacha" Match="NavLinkMatch.Prefix">@TextResourceTable.Get("[CommonFooterGachaButtonLabel]")</MudNavLink>
+
+    <div class="mm-nav-section">Game</div>
+    <MudNavLink Icon="@Icons.Material.Rounded.Person" Href="Character" Match="NavLinkMatch.Prefix">@TextResourceTable.Get("[CommonFooterCharacterButtonLabel]")</MudNavLink>
     <MudNavLink Icon="@Icons.Material.Rounded.Inventory2" Href="Items" Match="NavLinkMatch.Prefix">@TextResourceTable.Get("[CommonFooterItemBoxButtonLabel]")</MudNavLink>
     <MudNavLink Icon="@Icons.Material.Rounded.Storefront" Href="Shop" Match="NavLinkMatch.Prefix">@TextResourceTable.Get("[CommonHeaderExchangeLabel]")</MudNavLink>
-    @* <MudNavLink Icon="@Icons.Material.Filled.LocalFireDepartment" Href="/Adventure" Match="NavLinkMatch.Prefix">冒险</MudNavLink> *@
-    @* <MudNavLink Icon="@Icons.Material.Filled.Flag" Href="/Trial" Match="NavLinkMatch.Prefix">试炼</MudNavLink> *@
-    <MudNavLink Icon="@Icons.Material.Rounded.AutoAwesome" Href="Gacha" Match="NavLinkMatch.Prefix">@TextResourceTable.Get("[CommonFooterGachaButtonLabel]")</MudNavLink>
-    @* <MudNavLink Icon="@Icons.Material.Filled.Chat" Href="/Chat" Match="NavLinkMatch.Prefix">聊天</MudNavLink> *@
-    @* <MudNavLink Icon="@Icons.Material.Filled.NaturePeople" Href="/Guild" Match="NavLinkMatch.Prefix">公会</MudNavLink> *@
     <MudNavLink Icon="@Icons.Material.Rounded.History" Href="Battlelog" Match="NavLinkMatch.Prefix">@TextResourceTable.Get("[BattleReportTitle]")</MudNavLink>
+
+    <div class="mm-nav-section">Advanced</div>
+    <MudNavLink Icon="@Icons.Material.Rounded.Handyman" Href="tools" Match="NavLinkMatch.Prefix">Manual tools</MudNavLink>
     <MudNavLink Icon="@Icons.Material.Rounded.Tune" Href="Settings" Match="NavLinkMatch.Prefix">@TextResourceTable.Get("[CommonOptionParameterLabel]")</MudNavLink>
 </MudNavMenu>
-
-@code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
-
-}
