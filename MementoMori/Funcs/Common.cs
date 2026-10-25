@@ -261,5 +261,6 @@ public partial class MementoMoriFuncs : ReactiveObject, IDisposable
         if (GameConfig.AutoJob.AutoFreeGacha) await FreeGacha();
         if (GameConfig.AutoJob.AutoUseItems) await AutoUseItems();
         if (GameConfig.AutoJob.AutoRankUpCharacter) await AutoRankUpCharacter();
+        await AutoProgress();
     }
 }

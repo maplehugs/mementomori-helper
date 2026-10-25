@@ -13,6 +13,11 @@
     </MudCardHeader>
     <MudCardContent>
         <MudSwitch Label="@ResourceStrings.DisableAllJobs" @bind-Value="AutoJob__DisableAll" Color="Color.Primary"></MudSwitch>
+        <MudSwitch Label="Auto main quest (stop after 3 losses)" @bind-Value="AutoJob__AutoProgressQuest" Color="Color.Primary"></MudSwitch>
+        <MudSwitch Label="Auto towers" @bind-Value="AutoJob__AutoProgressTower" Color="Color.Primary"></MudSwitch>
+        <MudSwitch Label="Auto level up" @bind-Value="AutoJob__AutoLevelUpCharacter" Color="Color.Primary"></MudSwitch>
+        <MudSwitch Label="Auto equip best gear" @bind-Value="AutoJob__AutoEquipBest" Color="Color.Primary"></MudSwitch>
+        <MudSwitch Label="Auto reinforce team gear" @bind-Value="AutoJob__AutoReinforceTeamEquipment" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="@ResourceStrings.ReinforceEquipmentOnce" @bind-Value="AutoJob__AutoReinforcementEquipmentOneTime" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="@Tr("[CommonHeaderLocalPvpLabel]")" @bind-Value="AutoJob__AutoPvp" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="@Tr("[CommonHeaderGlobalPvpLabel]")" @bind-Value="AutoJob__AutoLegendLeague" Color="Color.Primary"></MudSwitch>
@@ -29,6 +34,36 @@
 </MudCard>
 
 @code {
+    public bool AutoJob__AutoProgressQuest
+    {
+        get => WritableGameConfig.Value.AutoJob.AutoProgressQuest;
+        set => WritableGameConfig.Update(x => x.AutoJob.AutoProgressQuest = value);
+    }
+
+    public bool AutoJob__AutoProgressTower
+    {
+        get => WritableGameConfig.Value.AutoJob.AutoProgressTower;
+        set => WritableGameConfig.Update(x => x.AutoJob.AutoProgressTower = value);
+    }
+
+    public bool AutoJob__AutoLevelUpCharacter
+    {
+        get => WritableGameConfig.Value.AutoJob.AutoLevelUpCharacter;
+        set => WritableGameConfig.Update(x => x.AutoJob.AutoLevelUpCharacter = value);
+    }
+
+    public bool AutoJob__AutoEquipBest
+    {
+        get => WritableGameConfig.Value.AutoJob.AutoEquipBest;
+        set => WritableGameConfig.Update(x => x.AutoJob.AutoEquipBest = value);
+    }
+
+    public bool AutoJob__AutoReinforceTeamEquipment
+    {
+        get => WritableGameConfig.Value.AutoJob.AutoReinforceTeamEquipment;
+        set => WritableGameConfig.Update(x => x.AutoJob.AutoReinforceTeamEquipment = value);
+    }
+
     public bool AutoJob__DisableAll
     {
         get => WritableGameConfig.Value.AutoJob.DisableAll;

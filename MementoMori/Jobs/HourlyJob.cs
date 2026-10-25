@@ -31,5 +31,6 @@ public partial class HourlyJob : IJob
         await account.Funcs.RewardMissonActivity();
         if (_gameConfig.Value.AutoJob.AutoFreeGacha) await account.Funcs.FreeGacha();
         if (_gameConfig.Value.AutoJob.AutoUseItems) await account.Funcs.AutoUseItems();
+        await account.Funcs.AutoProgress();
     }
 }
