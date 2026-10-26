@@ -132,14 +132,14 @@ public partial class MementoMoriFuncs
     public async Task<List<BannerAdvice>> EvaluateBanners()
     {
         var list = await GetResponse<GetListRequest, GetListResponse>(new GetListRequest());
-        var diamonds = UserSyncData.GetUserItemCount(ItemType.CurrencyFree, isAnyCurrency: true);
+        var diamonds = UserSyncData.GetUserItemCount(ItemType.CurrencyFree); // 只算免费钻石, 不碰付费钻石
         var advice = new List<BannerAdvice>();
         foreach (var c in list.GachaCaseInfoList.Where(c => c.GachaCategoryType == GachaCategoryType.Character && c.GachaGroupType != GachaGroupType.HolyAngel))
         {
             var ui = GachaCaseUiTable.GetById(c.GachaCaseUiId);
             var pickup = ui?.PickUpCharacterId ?? 0;
             var name = ui == null ? c.GachaCaseId.ToString() : TextResourceTable.Get(ui.NameKey);
-            var diamondBtn = c.GachaButtonInfoList?.Where(b => b.ConsumeUserItem?.ItemType is ItemType.CurrencyFree or ItemType.CurrencyPaid).MaxBy(b => b.LotteryCount);
+            var diamondBtn = c.GachaButtonInfoList?.Where(b => b.ConsumeUserItem?.ItemType == ItemType.CurrencyFree).MaxBy(b => b.LotteryCount);
             var ticketBtn = c.GachaButtonInfoList?.Where(b => b.ConsumeUserItem?.ItemType == ItemType.GachaTicket
                                                               && UserSyncData.GetUserItemCount(ItemType.GachaTicket, b.ConsumeUserItem.ItemId) >= b.ConsumeUserItem.ItemCount)
                 .MaxBy(b => b.LotteryCount);
@@ -175,7 +175,7 @@ public partial class MementoMoriFuncs
             for (var round = 0; round < 20 && !token.IsCancellationRequested; round++)
             {
                 var advice = await EvaluateBanners();
-                var diamonds = UserSyncData.GetUserItemCount(ItemType.CurrencyFree, isAnyCurrency: true);
+                var diamonds = UserSyncData.GetUserItemCount(ItemType.CurrencyFree); // 只算免费钻石, 不碰付费钻石
                 // 1) 券: 白金/属性/命运券 全部用掉
                 var ticket = advice.FirstOrDefault(a => a.TicketButton != null);
                 // 2) 钻石: 只砸 S/SS 限定 UP, 并保留储备
