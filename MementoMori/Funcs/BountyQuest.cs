@@ -158,8 +158,12 @@ public partial class MementoMoriFuncs
 
             if (questIds.Count > 0)
             {
-                var rewardResponse = await GetResponse<RewardRequest, RewardResponse>(new RewardRequest {BountyQuestIds = questIds, ConsumeCurrency = 0, IsQuick = false});
-                rewardResponse.RewardItems.PrintUserItems(log);
+                // Claim All (multiple ids) is rank-locked (ErrorCode 142019), so claim one by one
+                foreach (var questId in questIds)
+                {
+                    var rewardResponse = await GetResponse<RewardRequest, RewardResponse>(new RewardRequest {BountyQuestIds = new List<long> {questId}, ConsumeCurrency = 0, IsQuick = false});
+                    rewardResponse.RewardItems.PrintUserItems(log);
+                }
                 await GetResponse<GetListRequest, GetListResponse>(new GetListRequest());
             }
             else
@@ -180,12 +184,18 @@ public partial class MementoMoriFuncs
 
     public async Task RemakeBountyRequest()
     {
-        if (BountyQuestResponseInfo.UserBountyQuestDtoInfos.Any(d => d.BountyQuestEndTime == 0))
+        await ExecuteQuickAction(async (log, token) =>
         {
-            var response = await GetResponse<RemakeRequest, RemakeResponse>(new RemakeRequest());
-            await GetBountyRequestInfo();
-        }
-        else
-            AddLog(string.Format(ResourceStrings.NoAvailable, TextResourceTable.Get("[BountyQuestTypeSolo]")));
+            // 以前直接读缓存, 没先打开过祈愿之泉时是 null, 按钮就没反应
+            var info = await GetBountyRequestInfo();
+            if (info?.UserBountyQuestDtoInfos.Any(d => d.BountyQuestEndTime == 0) == true)
+            {
+                await GetResponse<RemakeRequest, RemakeResponse>(new RemakeRequest());
+                await GetBountyRequestInfo();
+                log("Fountain of Prayers rerolled");
+            }
+            else
+                log(string.Format(ResourceStrings.NoAvailable, TextResourceTable.Get("[BountyQuestTypeSolo]")));
+        });
     }
 }

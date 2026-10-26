@@ -21,6 +21,7 @@
         <MudSwitch Label="Auto level up" @bind-Value="AutoJob__AutoLevelUpCharacter" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="Auto equip best gear" @bind-Value="AutoJob__AutoEquipBest" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="Auto reinforce team gear" @bind-Value="AutoJob__AutoReinforceTeamEquipment" Color="Color.Primary"></MudSwitch>
+        <MudSwitch Label="Auto runes (combine Lv1-5 if gold > 1M, open first slot, socket best)" @bind-Value="AutoJob__AutoSphere" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="@ResourceStrings.ReinforceEquipmentOnce" @bind-Value="AutoJob__AutoReinforcementEquipmentOneTime" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="@Tr("[CommonHeaderLocalPvpLabel]")" @bind-Value="AutoJob__AutoPvp" Color="Color.Primary"></MudSwitch>
         <MudSwitch Label="@Tr("[CommonHeaderGlobalPvpLabel]")" @bind-Value="AutoJob__AutoLegendLeague" Color="Color.Primary"></MudSwitch>
@@ -59,6 +60,12 @@
     {
         get => WritableGameConfig.Value.AutoJob.AutoProgressQuest;
         set => WritableGameConfig.Update(x => x.AutoJob.AutoProgressQuest = value);
+    }
+
+    public bool AutoJob__AutoSphere
+    {
+        get => WritableGameConfig.Value.AutoJob.AutoSphere;
+        set => WritableGameConfig.Update(x => x.AutoJob.AutoSphere = value);
     }
 
     public bool AutoJob__AutoProgressTower

@@ -131,6 +131,7 @@ public class GameConfig
         public bool AutoLevelUpCharacter { get; set; }
         public bool AutoEquipBest { get; set; }
         public bool AutoReinforceTeamEquipment { get; set; }
+        public bool AutoSphere { get; set; } = true;
         public bool AutoProgressQuest { get; set; }
         public bool AutoProgressTower { get; set; }
         public bool AutoBuildTeam { get; set; }

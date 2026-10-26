@@ -1,3 +1,4 @@
+using MementoMori.Exceptions;
 using MementoMori.Ortega.Custom;
 using MementoMori.Ortega.Share.Data.ApiInterface.Battle;
 using MementoMori.Ortega.Share.Data.ApiInterface.Quest;
@@ -21,8 +22,12 @@ public partial class MementoMoriFuncs
         await AutoGrow();
         if (GameConfig.AutoJob.AutoProgressQuest) await RunTask("Climbing main quest", AutoProgressQuest);
         if (GameConfig.AutoJob.AutoProgressTower)
+        {
+            _elementTowersLocked = false;
             foreach (var t in GetAvailableTower())
-                await RunTask($"Climbing {TextResourceTable.Get(t)}", () => AutoProgressTower(t));
+                if (t == TowerType.Infinite || !_elementTowersLocked)
+                    await RunTask($"Climbing {TextResourceTable.Get(t)}", () => AutoProgressTower(t));
+        }
         await AutoGrow();
         TakeSnapshot();
     }
@@ -83,6 +88,7 @@ public partial class MementoMoriFuncs
                     fights++;
                     var win = resp.BattleResult.SimulationResult.BattleEndInfo.IsWinAttacker();
                     log($"Quest {QuestTable.GetById(questId).Memo}: {(win ? "WIN" : "LOSE")}");
+                    await _battleLogManager.SaveBattleLog(resp.BattleResult, "main", QuestTable.GetById(questId).Memo, autoDeletePreserveCount: 50);
                     if (win)
                     {
                         losses = 0;
@@ -109,6 +115,8 @@ public partial class MementoMoriFuncs
         });
     }
 
+    private bool _elementTowersLocked;
+
     public async Task AutoProgressTower(TowerType type)
     {
         await ExecuteQuickAction(async (log, token) =>
@@ -127,10 +135,13 @@ public partial class MementoMoriFuncs
                     fights++;
                     var win = resp.BattleResult.SimulationResult.BattleEndInfo.IsWinAttacker();
                     log($"{TextResourceTable.Get(type)} {questId}: {(win ? "WIN" : "LOSE")}");
+                    await _battleLogManager.SaveBattleLog(resp.BattleResult, $"tower-{type}", questId.ToString(), autoDeletePreserveCount: 50);
                     losses = win ? 0 : losses + 1;
                 }
                 catch (Exception e)
                 {
+                    // 属性塔未解放时其余属性塔也不用试了
+                    if (e is ApiErrorException {ErrorCode: ErrorCode.TowerBattleElementTowerNotOpen}) _elementTowersLocked = true;
                     log($"{TextResourceTable.Get(type)} {questId}: {e.Message}");
                     break;
                 }

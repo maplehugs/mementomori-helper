@@ -17,6 +17,7 @@ public partial class MementoMoriFuncs
         if (GameConfig.AutoJob.AutoLevelUpCharacter) await RunTask("Leveling up", AutoLevelUpCharacter);
         if (GameConfig.AutoJob.AutoEquipBest) await RunTask("Equipping best gear", AutoEquipBest); // 升级后可能能穿更高级的
         if (GameConfig.AutoJob.AutoReinforceTeamEquipment) await RunTask("Reinforcing gear", AutoReinforceTeamEquipment);
+        if (GameConfig.AutoJob.AutoSphere) await RunTask("Socketing runes", AutoSphere);
     }
 
     private bool CanAfford(IEnumerable<UserItem> items) =>

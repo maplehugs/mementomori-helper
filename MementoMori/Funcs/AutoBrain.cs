@@ -11,9 +11,13 @@ namespace MementoMori.Funcs;
 
 public partial class MementoMoriFuncs
 {
-    private static readonly DeckUseContentType[] TeamDecks = {DeckUseContentType.Boss, DeckUseContentType.Auto, DeckUseContentType.Infinite};
+    private static readonly DeckUseContentType[] TeamDecks =
+    {
+        DeckUseContentType.Boss, DeckUseContentType.Auto, DeckUseContentType.Infinite, DeckUseContentType.BattleLeagueOffense, DeckUseContentType.BattleLeagueDefense,
+        DeckUseContentType.LocalRaid, DeckUseContentType.DungeonBattle
+    };
 
-    // 把推荐队伍存成 主线/挂机/无穷塔 的队伍
+    // 把推荐队伍存成 主线/挂机/无穷塔/竞技场/幻影神殿/时空洞窟 的队伍
     public async Task AutoBuildTeam()
     {
         await ExecuteQuickAction(async (log, token) =>

@@ -1,52 +1,227 @@
-﻿@using MementoMori.Option
-@using MementoMori.Common.Localization
+﻿@page "/battlelog"
+@using MementoMori.Option
+@using MementoMori.Funcs
+@using MementoMori.Ortega.Share.Data.Battle.Result
+@using Newtonsoft.Json
+@using MementoMori.Ortega.Share.Enums
+@using static MementoMori.Ortega.Share.Masters
 @inject IWritableOptions<GameConfig> GameConfig
-@page "/battlelog"
-@inject IJSRuntime JS
-@inject IDialogService DialogService
 @inject IFileSaver FileSaver
 
-<MudText Typo="Typo.h6">
-    @ResourceStrings.You_can_download_the_battle_log_and_parse_it_here: <MudLink Href="https://mentemori.icu/battle_log.html" Target="_blank">Battle Log Viewer</MudLink>
-</MudText>
+<PageTitle>Battle log</PageTitle>
 
-<MudStack Row="true" Class="justify-start ">
-    <MudSelect @bind-Value="_selectedCleanRange" Label="@ResourceStrings.BattleLogCleanRange" Dense="true" Style="width: 120px;">
-        <MudSelectItem Value="1">@ResourceStrings.BattleLogCleanOption1Day</MudSelectItem>
-        <MudSelectItem Value="7">@ResourceStrings.BattleLogCleanOption1Week</MudSelectItem>
-        <MudSelectItem Value="30">@ResourceStrings.BattleLogCleanOption1Month</MudSelectItem>
-        <MudSelectItem Value="0">@ResourceStrings.BattleLogCleanOptionAll</MudSelectItem>
-    </MudSelect>
-    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Variant="Variant.Outlined"
-                   OnClick="CleanBattleLogs" Color="Color.Error"></MudIconButton>
-</MudStack>
+<MudGrid Spacing="3">
+    <MudItem xs="12" md="5" lg="4">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText>Recent battles</MudText>
+                    <MudText Typo="Typo.caption" Class="mm-muted">@_entries.Count(e => Visible(e)) shown · @_entries.Count(e => Visible(e) && e.Win) won · @_entries.Count(e => Visible(e) && !e.Win) lost</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudIconButton Icon="@Icons.Material.Rounded.Refresh" Size="Size.Small" OnClick="Load"/>
+                    <MudMenu Icon="@Icons.Material.Rounded.DeleteSweep" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="() => Clean(1)">Delete older than 1 day</MudMenuItem>
+                        <MudMenuItem OnClick="() => Clean(7)">Delete older than 1 week</MudMenuItem>
+                        <MudMenuItem OnClick="() => Clean(0)">Delete all</MudMenuItem>
+                    </MudMenu>
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent Class="pt-0">
+                <MudChipSet T="string" @bind-SelectedValue="_filter" SelectionMode="SelectionMode.ToggleSelection" Class="mb-2">
+                    @foreach (var k in _entries.Select(e => e.Kind).Distinct())
+                    {
+                        <MudChip T="string" Value="k" Size="Size.Small" Variant="Variant.Outlined">@k</MudChip>
+                    }
+                </MudChipSet>
+                @if (_entries.Count == 0)
+                {
+                    <MudText Class="mm-muted pa-6" Align="Align.Center">No battles recorded yet. Quest, tower and PvP fights show up here after the next autopilot run.</MudText>
+                }
+                <div class="mm-battle-list">
+                    @foreach (var e in _entries.Where(Visible).Take(300))
+                    {
+                        <div class="mm-battle-row @(e == _selected ? "is-selected" : "")" @onclick="() => Select(e)">
+                            <MudIcon Icon="@(e.Win ? Icons.Material.Rounded.EmojiEvents : Icons.Material.Rounded.Close)" Color="@(e.Win ? Color.Success : Color.Error)" Size="Size.Small"/>
+                            <div class="mm-battle-main">
+                                <div class="mm-battle-title">@e.Kind · @e.Target</div>
+                                <div class="mm-battle-time">@e.Time.ToLocalTime().ToString("MM/dd HH:mm")</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
 
-<MudStack Row="true" Class="justify-start align-center">
-    <MudIconButton Icon="@Icons.Material.Filled.Pageview" Size="Size.Small" Variant="Variant.Outlined" OnClick="() => ViewBattleLog(SelectedBattleResult)"></MudIconButton>
-    <MudIconButton Icon="@Icons.Material.Filled.Download" Size="Size.Small" Variant="Variant.Outlined" OnClick="() => DownloadBattleLog(SelectedBattleResult)"></MudIconButton>
-    <MudSelect Label="Battle Type" T="BattleLogType" @bind-Value="selectedBattleLogType" Dense="true">
-        @foreach (BattleLogType battleLogType in Enum.GetValues(typeof(BattleLogType)))
+    <MudItem xs="12" md="7" lg="8">
+        @if (_result == null)
         {
-            <MudSelectItem Value="battleLogType">
-                <MudText Inline="true">@battleLogType</MudText>
-            </MudSelectItem>
+            <MudPaper Class="pa-8" Outlined="true">
+                <MudText Class="mm-muted" Align="Align.Center">Pick a battle on the left to see who did the damage and who died.</MudText>
+            </MudPaper>
         }
-    </MudSelect>
-    <MudSelect Label="Log file" @bind-Value="SelectedBattleResult" Dense="true">
-        @foreach (var filename in BattleResults)
+        else
         {
-            <MudSelectItem Value="filename">
-                <MudText Inline="true">@filename</MudText>
-            </MudSelectItem>
+            var sim = _result.SimulationResult;
+            var win = sim.BattleEndInfo.IsWinAttacker();
+            var reports = sim.BattleCharacterReports ?? new();
+            var maxDmg = Math.Max(1, reports.Max(r => r.TotalGiveDamage));
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <span style="color: var(--mud-palette-@(win ? "success" : "error"))">@(win ? "Victory" : "Defeat")</span>
+                            <span class="mm-muted"> · @_selected!.Kind · @_selected.Target</span>
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="mm-muted">
+                            @_selected.Time.ToLocalTime().ToString("ddd dd MMM HH:mm") · ended on turn @sim.BattleEndInfo.EndTurn@(sim.BattleEndInfo.IsOutOfTurn ? " (ran out of turns, counts as a loss)" : "")
+                        </MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudTooltip Text="Download for the full turn-by-turn replay viewer">
+                            <MudIconButton Icon="@Icons.Material.Rounded.Download" Size="Size.Small" OnClick="Download"/>
+                        </MudTooltip>
+                        <MudTooltip Text="Open the community replay viewer (load the downloaded file there)">
+                            <MudIconButton Icon="@Icons.Material.Rounded.OpenInNew" Size="Size.Small" Href="https://mentemori.icu/battle_log.html" Target="_blank"/>
+                        </MudTooltip>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @foreach (var side in new[] {BattleFieldCharacterGroupType.Attacker, BattleFieldCharacterGroupType.Receiver})
+                    {
+                        var team = reports.Where(r => r.GroupType == side).OrderByDescending(r => r.TotalGiveDamage).ToList();
+                        if (team.Count == 0) continue;
+                        <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">
+                            @(side == BattleFieldCharacterGroupType.Attacker ? "Your team" : "Enemy")
+                            <span class="mm-muted"> · @team.Count(r => r.Hp > 0)/@team.Count alive · @Short(team.Sum(r => r.TotalGiveDamage)) total damage</span>
+                        </MudText>
+                        <MudSimpleTable Dense="true" Hover="true" Class="mb-4 mm-battle-table">
+                            <thead><tr><th>Unit</th><th>Damage dealt</th><th class="mm-num">Taken</th><th class="mm-num">Healed</th><th class="mm-num">HP left</th></tr></thead>
+                            <tbody>
+                            @foreach (var r in team)
+                            {
+                                var hpPct = r.MaxHp > 0 ? (double) r.Hp / r.MaxHp * 100 : 0;
+                                <tr class="@(r.Hp <= 0 ? "mm-dead" : "")">
+                                    <td>
+                                        <div class="mm-unit-name">@UnitName(r)</div>
+                                        <div class="mm-muted mm-unit-sub">Lv @r.CharacterLevel · @r.ElementType@(string.IsNullOrEmpty(r.PlayerName) ? "" : " · " + r.PlayerName)</div>
+                                    </td>
+                                    <td style="min-width: 140px">
+                                        <div class="mm-num">@Short(r.TotalGiveDamage)</div>
+                                        <MudProgressLinear Value="@((double) r.TotalGiveDamage / maxDmg * 100)" Color="@(side == BattleFieldCharacterGroupType.Attacker ? Color.Primary : Color.Error)" Rounded="true" Size="Size.Small"/>
+                                    </td>
+                                    <td class="mm-num">@Short(r.TotalReceiveDamage)</td>
+                                    <td class="mm-num">@Short(r.TotalHpRecovery)</td>
+                                    <td class="mm-num">@(r.Hp <= 0 ? "dead" : $"{hpPct:0}%")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                </MudCardContent>
+            </MudCard>
         }
-    </MudSelect>
-</MudStack>
+    </MudItem>
+</MudGrid>
 
-<iframe id="log_viewer" src="https://mentemori.icu/battle_log.html"></iframe>
 <style>
-    #log_viewer {
-        width: 100%;
-        height: 800px;
-        border: none;
-    }
+    .mm-battle-list { max-height: 70vh; overflow-y: auto; margin: 0 -8px; }
+    .mm-battle-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; }
+    .mm-battle-row:hover { background: var(--mud-palette-action-default-hover); }
+    .mm-battle-row.is-selected { background: color-mix(in srgb, var(--mud-palette-primary) 16%, transparent); }
+    .mm-battle-main { min-width: 0; }
+    .mm-battle-title { font-weight: 600; font-size: .875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mm-battle-time { font-size: .75rem; color: var(--mud-palette-text-secondary); font-variant-numeric: tabular-nums; }
+    .mm-battle-table .mm-num { text-align: right; font-variant-numeric: tabular-nums; }
+    .mm-unit-name { font-weight: 600; }
+    .mm-unit-sub { font-size: .75rem; }
+    .mm-dead { opacity: .5; }
 </style>
+
+@code {
+    record Entry(string File, string Kind, string Target, bool Win, DateTimeOffset Time);
+
+    // 文件名: {prefix}-{middle}-{win|lose}-{startMs}-{token}.json, middle 可能带 '-' (比如 "5-28")
+    static readonly (string prefix, string kind)[] Kinds =
+    {
+        ("main-", "Main quest"), ("tower-Infinite-", "Infinity tower"), ("tower-Blue-", "Azure tower"), ("tower-Red-", "Crimson tower"),
+        ("tower-Green-", "Emerald tower"), ("tower-Yellow-", "Amber tower"), ("battleleague-", "Battle League"), ("legendleague-", "Legend League")
+    };
+
+    List<Entry> _entries = new();
+    Entry? _selected;
+    BattleResult? _result;
+    string? _filter;
+
+    bool Visible(Entry e) => _filter == null || e.Kind == _filter;
+
+    protected override void OnInitialized()
+    {
+        Load();
+        if (_entries.Count > 0) Select(_entries[0]);
+    }
+
+    void Load()
+    {
+        _entries.Clear();
+        var dir = GameConfig.Value.BattleLogDir;
+        if (!Directory.Exists(dir)) return;
+        foreach (var path in Directory.GetFiles(dir, "*.json"))
+        {
+            var name = Path.GetFileNameWithoutExtension(path);
+            var kind = Kinds.FirstOrDefault(k => name.StartsWith(k.prefix));
+            if (kind.prefix == null) continue;
+            var parts = name[kind.prefix.Length..].Split('-');
+            if (parts.Length < 4 || !long.TryParse(parts[^2], out var ms)) continue;
+            var target = string.Join('-', parts[..^3]);
+            _entries.Add(new Entry(path, kind.kind, string.IsNullOrEmpty(target) ? "?" : target, parts[^3] == "win", DateTimeOffset.FromUnixTimeMilliseconds(ms)));
+        }
+
+        _entries = _entries.OrderByDescending(e => e.Time).ToList();
+    }
+
+    void Select(Entry e)
+    {
+        _selected = e;
+        try
+        {
+            _result = JsonConvert.DeserializeObject<BattleResult>(File.ReadAllText(e.File));
+        }
+        catch
+        {
+            _result = null;
+        }
+    }
+
+    async Task Download()
+    {
+        if (_result == null || _selected == null) return;
+        await FileSaver.SaveFile(JsonConvert.SerializeObject(new {BattleSimulationResult = _result.SimulationResult}), Path.GetFileName(_selected.File));
+    }
+
+    void Clean(int days)
+    {
+        var threshold = days == 0 ? DateTimeOffset.MaxValue : DateTimeOffset.Now.AddDays(-days);
+        foreach (var e in _entries.Where(e => e.Time < threshold)) File.Delete(e.File);
+        if (_selected != null && !File.Exists(_selected.File)) (_selected, _result) = (null, null);
+        Load();
+    }
+
+    static string UnitName(BattleCharacterReport r)
+    {
+        var key = r.UnitType switch
+        {
+            UnitType.Character or UnitType.ShareCharacter => null,
+            UnitType.BossBattleEnemy => BossBattleEnemyTable.GetById(r.UnitId)?.NameKey,
+            UnitType.AutoBattleEnemy => AutoBattleEnemyTable.GetById(r.UnitId)?.NameKey,
+            UnitType.TowerBattleEnemy => TowerBattleEnemyTable.GetById(r.UnitId)?.NameKey,
+            UnitType.GuildTowerEnemy => GuildTowerEnemyTable.GetById(r.UnitId)?.NameKey,
+            _ => null
+        };
+        if (r.UnitType is UnitType.Character or UnitType.ShareCharacter) return MementoMoriFuncs.CharName(r.UnitId);
+        return key != null ? TextResourceTable.Get(key) : $"{r.UnitType} #{r.UnitId}";
+    }
+
+    static string Short(long v) => v >= 1_000_000 ? $"{v / 1_000_000d:0.#}M" : v >= 1_000 ? $"{v / 1_000d:0.#}K" : v.ToString();
+}
