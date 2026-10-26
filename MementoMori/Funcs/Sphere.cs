@@ -60,10 +60,12 @@ public partial class MementoMoriFuncs
                 var used = slots.Where(id => id > 0).Select(id => SphereTable.GetById(id).CategoryId).ToHashSet();
                 var pool = Owned().SelectMany(s => Enumerable.Repeat(s.id, (int) Math.Min(s.count, 4))).ToList();
                 var added = new List<string>();
+                // 攻击类符石只能放 武器/饰品/手, 防御类只能放 头/甲/鞋 (ErrorCode 232001)
+                var attackSlot = mb.SlotType is EquipmentSlotType.Weapon or EquipmentSlotType.Sub or EquipmentSlotType.Gauntlet;
                 for (var i = 0; i < current.SphereUnlockedCount && i < 4; i++)
                 {
                     if (slots[i] > 0) continue;
-                    var best = pool.Where(id => !used.Contains(SphereTable.GetById(id).CategoryId)).OrderByDescending(id => SphereTable.GetById(id).Lv).FirstOrDefault();
+                    var best = pool.Where(id => !used.Contains(SphereTable.GetById(id).CategoryId) && SphereTable.GetById(id).IsAttackType == attackSlot).OrderByDescending(id => SphereTable.GetById(id).Lv).FirstOrDefault();
                     if (best == 0) break;
                     slots[i] = best;
                     pool.Remove(best);
