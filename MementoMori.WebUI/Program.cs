@@ -14,7 +14,7 @@ using MementoMori.WebUI.UI;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
-using Index = MementoMori.BlazorShared.Pages.Index;
+using Index = MementoMori.BlazorShared.Pages.Dashboard;
 using Ortega.Common.Manager;
 using MudBlazor;
 using Refit;

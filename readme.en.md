@@ -1,4 +1,4 @@
-﻿[ [Zh](readme.md) | [En](readme.en.md) ]
+[ [Fork](readme.md) | [Zh](readme.zh.md) | [En](readme.en.md) ]
 
 # MementoMori Game Assistant
 
