@@ -51,6 +51,10 @@ Open `http://127.0.0.1:5290`, go to **Options → Account**, add your Transfer I
 
 Logging into the game yourself kicks the bot's session (and the other way round). That's expected; the next hourly run logs back in.
 
-## Disclaimer
+## Disclaimer — read this before you use it
 
-Same as upstream: this is for personal/educational use, it may break the game's terms of service, and you take the risk of a ban. See the [full disclaimer](readme.en.md#disclaimer).
+**This bot breaks MementoMori's Terms of Service. Your account can get banned.**
+
+We build it anyway: automating a game that's designed to make you pay or grind is the whole point, and the ban risk is the price of that. We don't care about the ToS, but we do try to keep you from getting banned. The bot spaces out requests (`AutoRequestDelay`), caps fights per run, stops after a few losses, and only does what a normal F2P player would do by hand. It never spends money and never spends diamonds unless you turn that on.
+
+None of that is a guarantee. If you can't afford to lose the account, don't run it. Use at your own risk. Upstream's [full disclaimer](readme.en.md#disclaimer) applies too.
