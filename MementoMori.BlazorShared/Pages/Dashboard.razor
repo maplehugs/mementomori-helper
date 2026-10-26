@@ -82,7 +82,7 @@ else
 
         @* ===== Team ===== *@
         <MudItem xs="12" lg="7">
-            <MudCard>
+            <MudCard Class="mm-fill">
                 <MudCardHeader>
                     <CardHeaderContent><MudText>Main team</MudText></CardHeaderContent>
                     <CardHeaderActions><MudButton Size="Size.Small" Href="team" EndIcon="@Icons.Material.Rounded.ChevronRight">Characters</MudButton></CardHeaderActions>
@@ -130,7 +130,7 @@ else
                     else
                     {
                         var points = snaps.TakeLast(48).ToList();
-                        <MudChart ChartType="ChartType.Line" Height="220px" Width="100%"
+                        <MudChart ChartType="ChartType.Line" Class="mm-chart" Height="220px" Width="100%"
                                   ChartSeries="@(new List<ChartSeries> {new() {Name = _metric, Data = points.Select(MetricValue).ToArray()}})"
                                   XAxisLabels="@points.Select((p, i) => i % Math.Max(1, points.Count / 6) == 0 ? p.Time.ToString("MM/dd HH:mm") : "").ToArray()"
                                   ChartOptions="@(new ChartOptions {LineStrokeWidth = 2.5, YAxisTicks = 0, InterpolationOption = InterpolationOption.Straight})"/>

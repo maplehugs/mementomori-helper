@@ -1,6 +1,7 @@
 
 /* ===== maplehugs fork: theme polish ===== */
-body { font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+:root { --mm-font: Inter, "Noto Sans SC", "Noto Sans JP", "Noto Sans KR", system-ui, sans-serif; --mm-mono: "JetBrains Mono", ui-monospace, monospace; }
+body { font-family: var(--mm-font); -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01"; }
 .mm-content { padding-top: 20px; padding-bottom: 48px; }
 .mm-appbar { backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid var(--mud-palette-lines-default); }
 .mm-account-select { max-width: 220px; margin-left: 8px; }
@@ -31,8 +32,8 @@ body { font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antial
                 radial-gradient(100% 120% at 100% 100%, color-mix(in srgb, var(--mud-palette-secondary) 12%, transparent), transparent 60%),
                 var(--mud-palette-surface); }
 .mm-stat { min-width: 96px; }
-.mm-stat .mm-stat-value { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.mm-stat .mm-stat-label { font-size: .6875rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.mm-stat-value { font-size: 1.5rem; letter-spacing: -.01em; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.mm-stat-label { font-size: .6875rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 
 /* 按下 0.96 */
 .mud-button-root:not(:disabled) { transition-property: scale, background-color, box-shadow; transition-duration: 150ms; transition-timing-function: ease-out; }
@@ -50,7 +51,7 @@ body { font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antial
 
 /* ===== dashboard ===== */
 .mm-kpi { border-radius: 14px; padding: 14px 16px; height: 100%; }
-.mm-kpi-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.mm-kpi-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .mm-kpi-delta { font-size: .75rem; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .mm-kpi-delta.up { color: var(--mud-palette-success); }
 .mm-kpi-delta.flat { color: var(--mud-palette-text-secondary); }
@@ -64,7 +65,7 @@ body { font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antial
 }
 @keyframes mm-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--mud-palette-primary) 55%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
 
-.mm-team { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+.mm-team { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 12px; }
 .mm-team-member { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border-radius: 12px; background: var(--mud-palette-background-gray); text-align: center; }
 .mm-team-name { font-weight: 600; font-size: .8125rem; line-height: 1.25; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .mm-team-gear { font-size: .75rem; color: var(--mud-palette-text-secondary); display: flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
@@ -89,6 +90,34 @@ body { font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antial
 .mm-feed-text { font-size: .8125rem; line-height: 1.45; overflow-wrap: anywhere; }
 .mm-feed-time { font-size: .6875rem; color: var(--mud-palette-text-secondary); margin-top: 2px; font-variant-numeric: tabular-nums; }
 
-.mm-log { font-family: ui-monospace, "JetBrains Mono", monospace; font-size: .72rem; line-height: 1.5; max-height: 520px; overflow-y: auto; overscroll-behavior: contain; color: var(--mud-palette-text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.mm-log { font-family: var(--mm-mono); font-size: .72rem; line-height: 1.5; max-height: 520px; overflow-y: auto; overscroll-behavior: contain; color: var(--mud-palette-text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
 .mm-log > div { padding: 2px 0; border-bottom: 1px solid var(--mud-palette-table-lines); }
 .mm-nav-section { font-size: .6875rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 14px 16px 4px; }
+
+/* 图表跟主题走: MudChart 默认蓝线 + 浅灰网格在暗色下很扎眼 */
+.mm-chart .mud-chart-line { stroke: var(--mud-palette-primary); }
+.mm-chart path[stroke="#e0e0e0"] { stroke: var(--mud-palette-lines-default); }
+.mm-chart text { fill: var(--mud-palette-text-secondary); }
+.mm-chart .mud-chart-legend { display: none; }
+
+/* 卡片高度被同行撑高时, 内容居中而不是顶在上面 */
+.mm-fill { display: flex; flex-direction: column; }
+.mm-fill .mud-card-content { flex: 1; display: grid; align-content: center; }
+
+/* 设置开关分组 */
+.mm-group-label { font-size: .6875rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 16px 0 2px; }
+.mm-group-label:first-child { margin-top: 0; }
+
+/* 定时任务选择器 */
+.mm-cron { padding: 10px 0; border-bottom: 1px solid var(--mud-palette-table-lines); }
+.mm-cron:last-child { border-bottom: none; }
+.mm-cron-head { display: flex; align-items: center; gap: 8px; }
+.mm-cron-label { flex: 1; font-weight: 600; font-size: .875rem; min-width: 0; }
+.mm-cron-mode { flex: 0 0 140px; }
+.mm-cron-body { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.mm-cron-time { display: flex; align-items: center; }
+.mm-cron-field { flex: 0 0 130px; }
+.mm-cron-custom { flex: 1 1 100%; }
+.mm-cron-custom input { font-family: var(--mm-mono); }
+.mm-cron-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.mm-cron-hint { font-size: .75rem; color: var(--mud-palette-text-secondary); margin-top: 4px; }

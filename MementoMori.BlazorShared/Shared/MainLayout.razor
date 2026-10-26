@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 
 <MudThemeProvider Theme="_theme" @bind-IsDarkMode="_isDarkMode"/>
+<style>:root { color-scheme: @(_isDarkMode ? "dark" : "light"); }</style>
 <MudPopoverProvider/>
 <MudDialogProvider/>
 <MudSnackbarProvider/>
@@ -17,7 +18,7 @@
 <MudLayout>
     <MudAppBar Elevation="0" Dense="true" Class="mm-appbar">
         <MudIconButton Icon="@Icons.Material.Rounded.Menu" Color="Color.Inherit" Edge="Edge.Start" @onclick="DrawerToggle" aria-label="Toggle menu"/>
-        <MudSelect T="long" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="mm-account-select" AdornmentIcon="@Icons.Material.Rounded.AccountCircle" Adornment="Adornment.Start"
+        <MudSelect T="long" ToStringFunc="@(id => AuthOption.Value.Accounts.FirstOrDefault(a => a.UserId == id)?.Name ?? "No account")" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="mm-account-select" AdornmentIcon="@Icons.Material.Rounded.AccountCircle" Adornment="Adornment.Start"
                    @bind-Value="AccountManager.CurrentUserId" aria-label="@ResourceStrings.SwitchAccount">
             @foreach (var account in AuthOption.Value.Accounts)
             {
@@ -56,6 +57,9 @@
 
     readonly (string, string)[] _languages = {("en-US", "English"), ("zh-CN", "简体中文"), ("ja-JP", "日本語"), ("ko-KR", "한국어")};
 
+    // Inter 管拉丁字, Noto 兜底中日韩
+    static readonly string[] Fonts = {"Inter", "Noto Sans SC", "Noto Sans JP", "Noto Sans KR", "system-ui", "sans-serif"};
+
     // 暗色为主: 深蓝夜色 + 玫瑰色强调 + 金色次强调
     readonly MudTheme _theme = new()
     {
@@ -80,8 +84,8 @@
         },
         Typography = new Typography
         {
-            Default = new Default {FontFamily = new[] {"Inter", "system-ui", "sans-serif"}},
-            Button = new Button {FontFamily = new[] {"Inter", "sans-serif"}, TextTransform = "none"},
+            Default = new Default {FontFamily = Fonts},
+            Button = new Button {FontFamily = Fonts, TextTransform = "none"},
         },
         LayoutProperties = new LayoutProperties {DefaultBorderRadius = "10px", DrawerWidthLeft = "232px"},
     };

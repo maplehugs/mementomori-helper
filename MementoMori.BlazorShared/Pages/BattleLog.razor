@@ -6,7 +6,10 @@
 @using MementoMori.Ortega.Share.Enums
 @using static MementoMori.Ortega.Share.Masters
 @inject IWritableOptions<GameConfig> GameConfig
+@using MementoMori.Common.Localization
 @inject IFileSaver FileSaver
+@inject IJSRuntime JS
+@inject IDialogService DialogService
 
 <PageTitle>Battle log</PageTitle>
 
@@ -21,9 +24,10 @@
                 <CardHeaderActions>
                     <MudIconButton Icon="@Icons.Material.Rounded.Refresh" Size="Size.Small" OnClick="Load"/>
                     <MudMenu Icon="@Icons.Material.Rounded.DeleteSweep" Size="Size.Small" Dense="true">
-                        <MudMenuItem OnClick="() => Clean(1)">Delete older than 1 day</MudMenuItem>
-                        <MudMenuItem OnClick="() => Clean(7)">Delete older than 1 week</MudMenuItem>
-                        <MudMenuItem OnClick="() => Clean(0)">Delete all</MudMenuItem>
+                        <MudMenuItem OnClick="() => Clean(1)">@ResourceStrings.BattleLogCleanOption1Day</MudMenuItem>
+                        <MudMenuItem OnClick="() => Clean(7)">@ResourceStrings.BattleLogCleanOption1Week</MudMenuItem>
+                        <MudMenuItem OnClick="() => Clean(30)">@ResourceStrings.BattleLogCleanOption1Month</MudMenuItem>
+                        <MudMenuItem OnClick="() => Clean(0)">@ResourceStrings.BattleLogCleanOptionAll</MudMenuItem>
                     </MudMenu>
                 </CardHeaderActions>
             </MudCardHeader>
@@ -79,11 +83,9 @@
                         </MudText>
                     </CardHeaderContent>
                     <CardHeaderActions>
-                        <MudTooltip Text="Download for the full turn-by-turn replay viewer">
+                        <MudButton Size="Size.Small" Variant="@(_replay ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" StartIcon="@Icons.Material.Rounded.PlayCircle" OnClick="ToggleReplay">Replay</MudButton>
+                        <MudTooltip Text="Download the log file">
                             <MudIconButton Icon="@Icons.Material.Rounded.Download" Size="Size.Small" OnClick="Download"/>
-                        </MudTooltip>
-                        <MudTooltip Text="Open the community replay viewer (load the downloaded file there)">
-                            <MudIconButton Icon="@Icons.Material.Rounded.OpenInNew" Size="Size.Small" Href="https://mentemori.icu/battle_log.html" Target="_blank"/>
                         </MudTooltip>
                     </CardHeaderActions>
                 </MudCardHeader>
@@ -123,6 +125,13 @@
             </MudCard>
         }
     </MudItem>
+
+    @if (_replay && _result != null)
+    {
+        <MudItem xs="12">
+            <MudCard Class="mm-replay"><iframe id="log_viewer" src="https://mentemori.icu/battle_log.html" title="Battle replay"></iframe></MudCard>
+        </MudItem>
+    }
 </MudGrid>
 
 <style>
@@ -137,6 +146,8 @@
     .mm-unit-name { font-weight: 600; }
     .mm-unit-sub { font-size: .75rem; }
     .mm-dead { opacity: .5; }
+    .mm-replay { overflow: hidden; }
+    .mm-replay iframe { width: 100%; height: 800px; border: none; display: block; }
 </style>
 
 @code {
@@ -153,6 +164,7 @@
     Entry? _selected;
     BattleResult? _result;
     string? _filter;
+    bool _replay, _sendReplay;
 
     bool Visible(Entry e) => _filter == null || e.Kind == _filter;
 
@@ -187,6 +199,7 @@
         try
         {
             _result = JsonConvert.DeserializeObject<BattleResult>(File.ReadAllText(e.File));
+            _sendReplay = _replay;
         }
         catch
         {
@@ -194,16 +207,41 @@
         }
     }
 
+    string ViewerJson() => JsonConvert.SerializeObject(new {BattleSimulationResult = _result!.SimulationResult});
+
     async Task Download()
     {
         if (_result == null || _selected == null) return;
-        await FileSaver.SaveFile(JsonConvert.SerializeObject(new {BattleSimulationResult = _result.SimulationResult}), Path.GetFileName(_selected.File));
+        await FileSaver.SaveFile(ViewerJson(), Path.GetFileName(_selected.File));
     }
 
-    void Clean(int days)
+    // 内嵌 mentemori.icu 的逐回合回放, 选中别的战斗时自动换
+    void ToggleReplay() => (_replay, _sendReplay) = (!_replay, !_replay);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_sendReplay || _result == null) return;
+        _sendReplay = false;
+        await JS.InvokeVoidAsync("showBattleLog", ViewerJson());
+    }
+
+    async Task Clean(int days)
     {
         var threshold = days == 0 ? DateTimeOffset.MaxValue : DateTimeOffset.Now.AddDays(-days);
-        foreach (var e in _entries.Where(e => e.Time < threshold)) File.Delete(e.File);
+        var files = _entries.Where(e => e.Time < threshold).Select(e => e.File).ToList();
+        if (files.Count == 0)
+        {
+            await DialogService.ShowMessageBox(ResourceStrings.BattleLogCleanRange, ResourceStrings.BattleLogNoFilesToClean);
+            return;
+        }
+
+        var size = files.Sum(f => new FileInfo(f).Length);
+        var ok = await DialogService.ShowMessageBox(ResourceStrings.BattleLogCleanRange,
+            string.Format(ResourceStrings.BattleLogCleanConfirm, files.Count, $"{size / 1024d / 1024:0.##} MB"),
+            yesText: ResourceStrings.Confirm, cancelText: ResourceStrings.Cancel);
+        if (ok != true) return;
+
+        foreach (var f in files) File.Delete(f);
         if (_selected != null && !File.Exists(_selected.File)) (_selected, _result) = (null, null);
         Load();
     }
