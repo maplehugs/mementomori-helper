@@ -2,54 +2,68 @@
 
 # MementoMori Helper — Autopilot fork
 
-A fork of [moonheart/mementomori-helper](https://github.com/moonheart/mementomori-helper) that turns the helper into a hands-off **autopilot**: every hour it collects everything, grows your team, pushes the main quest and towers, and tells you what it did.
+A fork of [moonheart/mementomori-helper](https://github.com/moonheart/mementomori-helper) that turns the helper into a hands-off **autopilot**: it collects everything, grows your team, pushes the main quest and towers, and shows you what it did.
 
-Upstream docs (setup, every manual feature, FAQ) are still valid: [English](readme.en.md) · [中文](readme.zh.md). Upstream community: [Discord](https://discord.gg/mJ3fWxrypx) · [Telegram](https://t.me/+gTRe8AxKxIdkOTg9).
+The new version lives on the [`rewrite`](https://github.com/maplehugs/mementomori-helper/tree/rewrite) branch: moonheart's API + React rewrite with everything from this fork ported into it, proposed upstream in [moonheart#131](https://github.com/moonheart/mementomori-helper/pull/131). The old Blazor version is still on [`autogrow`](https://github.com/maplehugs/mementomori-helper/tree/autogrow).
 
-![Dashboard](images/fork-dashboard.png)
+Upstream community: [Discord](https://discord.gg/mJ3fWxrypx) · [Telegram](https://t.me/+gTRe8AxKxIdkOTg9).
 
-## What this fork adds
+![Home](images/fork-home.jpg)
 
-**Autopilot (hourly)**
-- Collects login bonus, missions + activity medals, presents, idle rewards, friend points, guild, achievements, character memories (diamonds)
-- Fountain of Prayers: dispatch + claim one by one (works before *Claim All* is unlocked)
-- Auto team: picks the best 5 by tier → rarity → level and saves it to quest, idle, Infinity tower, Battle League (attack + defense), Temple of Illusions and Cave of Space-Time decks
-- Level up, fill Level Link, equip best gear, reinforce team gear
-- **Runes**: combines duplicate Lv1–5 runes (only when gold > 1M), opens the first rune slot on team gear, sockets the best runes (no duplicate type per item)
-- Main quest + towers until 3 losses in a row; locked elemental towers are skipped
-- Smart rank-up (only eats low-tier fodder) and gacha (tickets always, diamonds only on S/SS pickups above a reserve)
-- Temple of Illusions: joins a random room, and **hosts its own** if nobody is around for 2 minutes
+## What it does
 
-**UI**
-- Dashboard: autopilot status, 24h deltas, progress chart, main team, activity feed, live log
-- Activity history and run snapshots
-- Team & tiers: built-in community tier list, editable per character, drives every decision above
-- Battle log rebuilt: list of every quest / tower / PvP fight, click one to see damage dealt, taken, healed and who died on each side
+**Every day, on its own**
+- Login bonuses (including every event / anniversary bonus running at once), VIP gift, monthly pass, presents, achievements
+- Missions: daily, weekly, main, guild, and event / collab / comeback / new character / panel missions
+- Idle rewards, boss quick battles, Tower of Infinity sweep, Cave of Space-Time, Fountain of Prayers (dispatch + claim)
+- Guild check-in, guild raid, guild tower, GvG rewards
+- Freebies: character memories (diamonds), friend missions, panel bingo lines, popularity vote, rental raid share rewards, gear synchro missions
+- Arena, Legend League, Temple of Illusions and shop purchases on their own schedule
 
-| Battle log | Team & tiers |
+**Autopilot (every hour, each step has its own switch)**
+- Gacha: uses every ticket; spends free diamonds only on S/SS pickups and never below your reserve. Paid diamonds are never touched
+- Smart rank-up (only eats weak same-element fodder, never your team, Level Link or locked units)
+- Builds the best team from the tier list and saves it to quest, idle, towers, Arena, Temple and Cave
+- Fills Level Link, levels up, equips the best gear, reinforces it, combines and sockets runes
+- Pushes the main quest and towers until 3 losses in a row, then grows again with what it earned
+
+**Things you click yourself** (always behind a confirm that shows the cost): Legend League icon shop, Stars Guidance trade, fountain quick finish, Level Link remove / sort / cooldown reset, manual banner pulls.
+
+| Autopilot | Team & Tiers |
 |---|---|
-| ![Battle log](images/fork-battlelog.png) | ![Team](images/fork-team.png) |
+| ![Autopilot](images/fork-autopilot.jpg) | ![Team & Tiers](images/fork-team.jpg) |
 
-![Activity](images/fork-activity.png)
+**Also**
+- Home: autopilot status, 24-hour changes (quest, Level Link, tower, rank, team power), progress chart, main team, a feed of everything the bot did (levels, gear, pulls, rewards, friends)
+- Team & Tiers: your team next to the recommended one, banner advisor, community tier list (Game8, Oct 2026) you can edit per character
+- Schedules you set as "every day at 08:00" instead of cron
+- **Pause** button for when you play on PC: the bot stops logging in, so it won't kick you
+- One account can have characters on several worlds: pick which one the bot plays
+- English UI (Chinese, Japanese and Korean too), dark mode, images cached on your server
+
+![Automation](images/fork-automation.jpg)
 
 ## Run it
 
-Docker is the easiest way (works on arm64 too):
+You need Docker. It works on x64 and ARM (Oracle's free A1 servers, Raspberry Pi 4/5).
 
 ```bash
-git clone -b autogrow https://github.com/maplehugs/mementomori-helper
+git clone -b rewrite https://github.com/maplehugs/mementomori-helper
 cd mementomori-helper
-docker build -t mementomori-webui:custom -f MementoMori.WebUI/Dockerfile .
-mkdir -p data && echo '{}' > data/appsettings.user.json
-docker run -d --name mementomori -p 127.0.0.1:5290:8080 \
-  -v $PWD/data/appsettings.user.json:/app/appsettings.user.json \
-  -v $PWD/data/Data:/app/Data -v $PWD/data/BattleLogs:/app/BattleLogs -v $PWD/data/Master:/app/Master \
-  mementomori-webui:custom
+docker build -t mementomori-helper -f MementoMori.Api/Dockerfile .
+docker run -d --name mementomori --restart unless-stopped \
+  -p 127.0.0.1:5290:8080 -v $PWD/data:/data \
+  -e Game__AutoRequestDelay=500 \
+  mementomori-helper
 ```
 
-Open `http://127.0.0.1:5290`, go to **Options → Account**, add your Transfer ID + password, and turn on **Autopilot** on the dashboard. Every autopilot feature has its own switch under **Options → Automation**.
+Open `http://127.0.0.1:5290`, click **Add account** and enter the Transfer ID and password from the game (Settings → Account → Transfer). Then turn on **Autopilot** and pick its steps.
 
-Logging into the game yourself kicks the bot's session (and the other way round). That's expected; the next hourly run logs back in.
+Everything (database, game data, image cache) is stored in `./data`. To update: `git pull`, build again and recreate the container.
+
+If you put it on the internet, put a reverse proxy with a password in front of it (Caddy `basic_auth`, nginx `auth_basic`). Anyone who can open the page can play your account.
+
+Logging into the game yourself kicks the bot's session (and the other way round). Hit **Pause** while you play.
 
 ## Disclaimer — read this before you use it
 
